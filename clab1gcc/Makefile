@@ -1,4 +1,4 @@
-# Makefile to compile the size_info program
+# Makefile to compile both size_info and string_manipulation programs
 
 # Compiler
 CC = gcc
@@ -6,19 +6,27 @@ CC = gcc
 # Compiler flags
 CFLAGS = -Wall
 
-# Target executable
-TARGET = size_info
+# Targets
+TARGET1 = size_info
+TARGET2 = strings
 
-# Compile and link the target
-all: $(TARGET)
+all: $(TARGET1) $(TARGET2)
 
-$(TARGET): size_info.o
-	$(CC) -o $(TARGET) size_info.o
+# Compile size_info
+$(TARGET1): size_info.o
+	$(CC) -o $(TARGET1) size_info.o
 
-# Compile the C source file into an object file
 size_info.o: size_info.c
 	$(CC) $(CFLAGS) -c size_info.c
 
-# Clean up object files and the executable
+# Compile string_manipulation
+$(TARGET2): strings.o
+	$(CC) -o $(TARGET2) strings.o
+
+string_manipulation.o: strings.c
+	$(CC) $(CFLAGS) -c strings.c
+
+# Clean up object files and executables
 clean:
-	rm -f *.o $(TARGET)
+	rm -f *.o $(TARGET1) $(TARGET2)
+
