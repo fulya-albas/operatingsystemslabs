@@ -1,19 +1,24 @@
-# Variables
-CC = gcc               # The compiler to use
-CFLAGS = -Wall -g     # Compiler flags: show all warnings and include debugging information
-TARGET = size_of_types # Name of the output executable
+# Makefile to compile the size_info program
 
-# Default target
+# Compiler
+CC = gcc
+
+# Compiler flags
+CFLAGS = -Wall
+
+# Target executable
+TARGET = size_info
+
+# Compile and link the target
 all: $(TARGET)
 
-# Build the target
-$(TARGET): main.o
-	$(CC) $(CFLAGS) -o $(TARGET) main.o
+$(TARGET): size_info.o
+	$(CC) -o $(TARGET) size_info.o
 
-# Compile the object file
-main.o: main.c
-	$(CC) $(CFLAGS) -c main.c
+# Compile the C source file into an object file
+size_info.o: size_info.c
+	$(CC) $(CFLAGS) -c size_info.c
 
-# Clean up
+# Clean up object files and the executable
 clean:
 	rm -f *.o $(TARGET)
