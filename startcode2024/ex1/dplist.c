@@ -6,9 +6,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+#include <string.h>
 #include <stdbool.h>
 #include "dplist.h"
-
 
 
 /*
@@ -18,32 +18,41 @@ struct dplist_node {
     dplist_node_t *prev, *next;
     element_t element;
 };
-typedef void (*free_element_t)(element_t element);
+
 struct dplist {
     dplist_node_t *head;
-    dplist_node_t *tail;
-    free_element_t free_element;
-    // more fields will be added later
 };
 
+// Helper function to copy an element (string)
+element_t element_copy(const element_t element) {
+    if (element == NULL) return NULL;
+    char* new_str = malloc(strlen(element) + 1); // +1 for the null terminator
+    if (new_str == NULL) {
+        return NULL;
+    }
+    strcpy(new_str, element);
+    return new_str;
+}
+
+// Helper function to free an element (string)
+void element_free(element_t element) {
+    free(element);
+}
+
 dplist_t *dpl_create() {
-    dplist_t *list;
-    list = malloc(sizeof(struct dplist));
+    dplist_t *list = malloc(sizeof(dplist_t));
+    assert(list != NULL);
     list->head = NULL;
-  return list;
+    return list;
 }
 
 void dpl_free(dplist_t **list) {
-
-    //TODO: add your code here
-    //Do extensive testing with valgrind.
-    if (list == NULL || *list == NULL) {
-        return;
-    }
+    if (list == NULL || *list == NULL) return;
 
     dplist_node_t *current = (*list)->head;
     while (current != NULL) {
         dplist_node_t *next = current->next;
+        element_free(current->element);
         free(current);
         current = next;
     }
@@ -52,107 +61,9 @@ void dpl_free(dplist_t **list) {
     *list = NULL;
 }
 
-/* Important note: to implement any list manipulation operator (insert, append, delete, sort, ...), always be aware of the following cases:
- * 1. empty list ==> avoid errors
- * 2. do operation at the start of the list ==> typically requires some special pointer manipulation
- * 3. do operation at the end of the list ==> typically requires some special pointer manipulation
- * 4. do operation in the middle of the list ==> default case with default pointer manipulation
- * ALWAYS check that you implementation works correctly in all these cases (check this on paper with list representation drawings!)
- **/
-
-
-dplist_t *dpl_insert_at_index(dplist_t *list, element_t element, int index) {
-    dplist_node_t *ref_at_index, *list_node;
-    if (list == NULL) return NULL;
-
-    list_node = malloc(sizeof(dplist_node_t));
-
-    list_node->element = element;
-    // pointer drawing breakpoint
-    if (list->head == NULL) { // covers case 1
-        list_node->prev = NULL;
-        list_node->next = NULL;
-        list->head = list_node;
-        // pointer drawing breakpoint
-    } else if (index <= 0) { // covers case 2
-        list_node->prev = NULL;
-        list_node->next = list->head;
-        list->head->prev = list_node;
-        list->head = list_node;
-        // pointer drawing breakpoint
-    } else {
-        ref_at_index = dpl_get_reference_at_index(list, index);
-        assert(ref_at_index != NULL);
-        // pointer drawing breakpoint
-        if (index < dpl_size(list)) { // covers case 4
-            list_node->prev = ref_at_index->prev;
-            list_node->next = ref_at_index;
-            ref_at_index->prev->next = list_node;
-            ref_at_index->prev = list_node;
-            // pointer drawing breakpoint
-        } else { // covers case 3
-            assert(ref_at_index->next == NULL);
-            list_node->next = NULL;
-            list_node->prev = ref_at_index;
-            ref_at_index->next = list_node;
-            // pointer drawing breakpoint
-        }
-    }
-    return list;
-}
-
-dplist_t *dpl_remove_at_index(dplist_t *list, int index) {
-
-    //TODO: add your code here
-    if (list == NULL) {
-        return NULL;
-    }
-
-    if (list->head == NULL) {
-        return NULL;
-    }
-    dplist_node_t *current = list->head;
-    if (index <= 0) {
-        if (current->next != NULL) {
-            list->head = current->next;
-            list->head->prev = NULL;
-        } else {
-            list->head = NULL;
-        }
-    } else {
-        int i = 0;
-        while (current != NULL && i < index) {
-            current = current->next;
-            i++;
-        }
-        if (current == NULL) {
-            current = list->tail;
-        } else {
-            if (current->prev != NULL) {
-                current->prev->next = current->next;
-            }
-            if (current->next != NULL) {
-                current->next->prev = current->prev;
-            }
-        }
-    }
-
-    dplist_node_t *removed_node = current;
-    if (current != NULL) {
-        if (list->free_element != NULL) {
-            list->free_element(current->element);
-        }
-        free(current);
-    }
-
-    return removed_node;
-}
-
 int dpl_size(dplist_t *list) {
-    //TODO: add your code here
-    if (list == NULL) {
-        return -1; // return -1 if the list is NULL
-    }
+    if (list == NULL) return -1;
+
     int size = 0;
     dplist_node_t *current = list->head;
     while (current != NULL) {
@@ -163,16 +74,11 @@ int dpl_size(dplist_t *list) {
 }
 
 dplist_node_t *dpl_get_reference_at_index(dplist_t *list, int index) {
-    //int count = 0 ;
-    dplist_node_t *dummy = NULL;
-    //TODO: add your code here
-    if (list == NULL || list->head == NULL) {
-        return NULL;
-    }
+    if (list == NULL || list->head == NULL) return NULL;
+
     dplist_node_t *current = list->head;
-    if (index <= 0) {
-        return current;
-    }
+    if (index <= 0) return current;
+
     int i = 0;
     while (current->next != NULL && i < index) {
         current = current->next;
@@ -182,18 +88,13 @@ dplist_node_t *dpl_get_reference_at_index(dplist_t *list, int index) {
 }
 
 element_t dpl_get_element_at_index(dplist_t *list, int index) {
+    if (list == NULL || list->head == NULL) return NULL;
 
-    //TODO: add your code here
-    if (list == NULL || list->head == NULL) {
-        return NULL;
-    }
     dplist_node_t *node = dpl_get_reference_at_index(list, index);
     return node->element;
 }
 
 int dpl_get_index_of_element(dplist_t *list, element_t element) {
-
-    //TODO: add your code here
     if (list == NULL) {
         return -1;
     }
@@ -201,14 +102,70 @@ int dpl_get_index_of_element(dplist_t *list, element_t element) {
     int index = 0;
     dplist_node_t *current = list->head;
     while (current != NULL) {
-        if (current->element == element) {
+        if (strcmp(current->element, element) == 0) { // Use strcmp for string comparison
             return index;
         }
         current = current->next;
         index++;
     }
 
-    return -1;}
+    return -1;
+}
 
 
+dplist_t *dpl_insert_at_index(dplist_t *list, element_t element, int index) {
+    if (list == NULL) return NULL;
 
+    dplist_node_t *new_node = malloc(sizeof(dplist_node_t));
+    assert(new_node != NULL);
+
+    new_node->element = element_copy(element);
+
+    if (list->head == NULL) {
+        new_node->prev = NULL;
+        new_node->next = NULL;
+        list->head = new_node;
+    } else if (index <= 0) {
+        new_node->prev = NULL;
+        new_node->next = list->head;
+        list->head->prev = new_node;
+        list->head = new_node;
+    } else {
+        dplist_node_t *ref_at_index = dpl_get_reference_at_index(list, index);
+        if (index < dpl_size(list)) {
+            new_node->prev = ref_at_index->prev;
+            new_node->next = ref_at_index;
+            if (ref_at_index->prev != NULL) {
+                ref_at_index->prev->next = new_node;
+            }
+            ref_at_index->prev = new_node;
+        } else {
+            new_node->next = NULL;
+            new_node->prev = ref_at_index;
+            ref_at_index->next = new_node;
+        }
+    }
+    return list;
+}
+
+dplist_t *dpl_remove_at_index(dplist_t *list, int index) {
+    if (list == NULL || list->head == NULL) return list;
+
+    dplist_node_t *current = list->head;
+    if (index <= 0) {
+        list->head = current->next;
+        if (list->head != NULL) list->head->prev = NULL;
+    } else {
+        current = dpl_get_reference_at_index(list, index);
+        if (current->prev != NULL) {
+            current->prev->next = current->next;
+        }
+        if (current->next != NULL) {
+            current->next->prev = current->prev;
+        }
+    }
+
+    element_free(current->element);
+    free(current);
+    return list;
+}

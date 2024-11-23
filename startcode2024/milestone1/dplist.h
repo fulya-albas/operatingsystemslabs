@@ -12,7 +12,6 @@ typedef struct dplist dplist_t;
 typedef struct dplist_node dplist_node_t;
 
 
-
 /** Create and allocate memory for a new list
  * \param element_copy callback function to duplicate 'element'; If needed allocated new memory for the duplicated element.
  * \param element_free callback function to free memory allocated to element
