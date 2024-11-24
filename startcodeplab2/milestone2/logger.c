@@ -56,7 +56,7 @@ int create_log_process() {
         close(pipe_fd[0]);
         exit(EXIT_SUCCESS);
     } else {
-        // Parent process
+        // parent process
         close(pipe_fd[0]);
         return 0;
     }
