@@ -75,6 +75,6 @@ int end_log_process() {
         return -1;
     }
     close(pipe_fd[1]);
-    waitpid(logger_pid, NULL, 0); //wait for logger to terminate
+    waitpid(logger_pid, NULL, 0);
     return 0;
 }
