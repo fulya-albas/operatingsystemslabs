@@ -1,0 +1,3 @@
+/home/fulya-albas2/operatingsystemslabs/startcode2024/cmake-build-debug/CMakeFiles/startcode2024.dir
+/home/fulya-albas2/operatingsystemslabs/startcode2024/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/fulya-albas2/operatingsystemslabs/startcode2024/cmake-build-debug/CMakeFiles/rebuild_cache.dir

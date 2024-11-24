@@ -25,8 +25,8 @@ int create_log_process() {
     }
 
     if (logger_pid == 0) {
-        // Child process: Logger
-        close(pipe_fd[1]); // Close write-end in child
+        // child process: logger
+        close(pipe_fd[1]);
         FILE *log_file = fopen("gateway.log", "a");
         if (!log_file) {
             perror("fopen");
@@ -44,7 +44,7 @@ int create_log_process() {
 
             buffer[bytes_read] = '\0';
             if (strcmp(buffer, "END_LOG\n") == 0) {
-                break; // Terminate logger
+                break; // terminate logger
             }
 
             time_t now = time(NULL);
@@ -57,7 +57,7 @@ int create_log_process() {
         exit(EXIT_SUCCESS);
     } else {
         // Parent process
-        close(pipe_fd[0]); // Close read-end in parent
+        close(pipe_fd[0]);
         return 0;
     }
 }
@@ -75,6 +75,6 @@ int end_log_process() {
         return -1;
     }
     close(pipe_fd[1]);
-    waitpid(logger_pid, NULL, 0); // Wait for logger to terminate
+    waitpid(logger_pid, NULL, 0); //wait for logger to terminate
     return 0;
 }
