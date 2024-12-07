@@ -7,7 +7,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#define MAX_LOG_MSG 256
+#define max_log_msg 256
 
 static int pipe_fd[2];
 static pid_t logger_pid = 0;
