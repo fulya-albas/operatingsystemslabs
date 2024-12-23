@@ -1,5 +1,5 @@
 /**
- * \author {AUTHOR}
+* \author {AUTHOR}
  */
 
 #ifndef _SBUFFER_H_
@@ -10,6 +10,10 @@
 #define SBUFFER_FAILURE -1
 #define SBUFFER_SUCCESS 0
 #define SBUFFER_NO_DATA 1
+
+#define END_OF_STREAM_ID 2222
+
+
 
 typedef struct sbuffer sbuffer_t;
 
@@ -43,5 +47,9 @@ int sbuffer_remove(sbuffer_t *buffer, sensor_data_t *data);
  * \return SBUFFER_SUCCESS on success and SBUFFER_FAILURE if an error occured
 */
 int sbuffer_insert(sbuffer_t *buffer, sensor_data_t *data);
+
+int sbuffer_close(sbuffer_t *buffer);
+
+int buffer_is_open(sbuffer_t *buffer);
 
 #endif  //_SBUFFER_H_
