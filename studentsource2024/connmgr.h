@@ -1,26 +1,22 @@
-#ifndef _CONNMGR_H_
-#define _CONNMGR_H_
+#ifndef CONNMGR_H
+#define CONNMGR_H
 
-#include <stdio.h>
-#include "lib/tcpsock.h"  // Assuming this provides TCP socket handling functions
+#include <pthread.h>
 
-/**
- * Initializes a TCP server that listens on a given port.
- *
- * \param server_ip: The IP address of the server to listen on.
- * \param server_port: The port number to listen on.
- * \param client: Pointer to store the client connection.
- * \return: TCP_NO_ERROR on success, an error code otherwise.
- */
-int tcp_server_init(const char *server_ip, int server_port, tcpsock_t **client);
+// Define the shared buffer size and structure
+#define BUFFER_SIZE 1024
 
-/**
- * Accepts a client connection on a TCP server.
- *
- * \param server_ip: The IP address to bind the server to.
- * \param server_port: The port to bind the server to.
- * \return: 0 if the server was successfully created, otherwise an error code.
- */
-int tcp_active_listen(const char *server_ip, int server_port);
+// Shared buffer structure
+typedef struct {
+    char buffer[BUFFER_SIZE];
+    int read_pos;
+    int write_pos;
+    pthread_mutex_t mutex;
+} shared_buffer_t;
 
-#endif /* _CONNMGR_H_ */
+// Function prototypes
+void init_shared_buffer(shared_buffer_t *buf);
+void insert_into_buffer(shared_buffer_t *buf, const char *data, int len);
+void *connmgr_socket_start(void *arg);
+
+#endif // CONNMGR_H

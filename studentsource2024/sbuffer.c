@@ -1,171 +1,85 @@
-/**
- * \author {AUTHOR}
- */
-
 #include <stdlib.h>
 #include <stdio.h>
-#include "sbuffer.h"
-#include "config.h"
-
-#include <inttypes.h>
 #include <pthread.h>
+#include <stdbool.h>
+#include "sbuffer.h"
 
+pthread_mutex_t write_mutex;
 
-/**
- * basic node for the buffer, these nodes are linked together to create the buffer
- */
-typedef struct sbuffer_node {
-	struct sbuffer_node *next;  /**< a pointer to the next node*/
-	sensor_data_t data;         /**< a structure containing the data */
-} sbuffer_node_t;
+sbuffer_t *sbuffer;
 
-/**
- * a structure to keep track of the buffer
- */
-struct sbuffer {
-	sbuffer_node_t *head;       /**< a pointer to the first node in the buffer */
-	sbuffer_node_t *tail;       /**< a pointer to the last node in the buffer */
+void sbuffer_init() {
+    // Initialize the buffer and the mutex.
+    pthread_mutex_init(&write_mutex, NULL);
+    sbuffer = malloc(sizeof(sbuffer_t));
 
-	pthread_mutex_t mutex;
-	pthread_cond_t not_empty;
-	pthread_cond_t not_full;
-	int is_open;
+    ERROR_HANDLER(sbuffer == NULL, "Buffer malloc failed.");
+    sbuffer->head = NULL;
+    sbuffer->tail = NULL;
 
-};
-
-int sbuffer_init(sbuffer_t **buffer) {
-	*buffer = malloc(sizeof(sbuffer_t));
-	if (*buffer == NULL){
-		return SBUFFER_FAILURE;
-	}
-	(*buffer)->head = NULL;
-	(*buffer)->tail = NULL;
-
-	pthread_mutex_init( &(*buffer)->mutex, NULL );
-	pthread_cond_init( &(*buffer)->not_empty, NULL);
-	pthread_cond_init(&(*buffer)->not_full, NULL);
-	(*buffer)->is_open = 1 ;
-	return SBUFFER_SUCCESS;
+    printf("Buffer initialized");
 }
 
-int buffer_is_open(sbuffer_t *buffer ){
-	pthread_mutex_lock(&buffer->mutex);
-	int is_open = buffer->is_open;
-	pthread_mutex_unlock(&buffer->mutex );
-	return is_open;
+void sbuffer_free() {
+    // Free everything, destroy the mutex. Make sure no thread is still writing.
+    pthread_mutex_lock(&write_mutex);
+    ERROR_HANDLER(sbuffer == NULL, "Buffer is NULL.");
+
+    while (sbuffer->head) {
+        sbuffer_node_t *temp = sbuffer->head;
+        sbuffer->head = sbuffer->head->next;
+        free(temp->data);
+        free(temp);
+    }
+    free(sbuffer);
+    sbuffer = NULL;
+    pthread_mutex_unlock(&write_mutex);
+    pthread_mutex_destroy(&write_mutex); // Destroy the mutex for good measure.
+    printf("Buffer freed successfully.");
 }
 
+int sbuffer_read(sbuffer_node_t **node, sensor_data_t **data) {
+    // No mention is ever made of a bounded buffer, I'll just assume an infinite amount of RAM then :P
+    // No deleting reads = no mutex = no headaches.
+    ERROR_HANDLER(sbuffer == NULL, "Buffer is NULL.");
+    if (sbuffer->head == NULL) return SBUFFER_NO_DATA; //List is empty
 
-int sbuffer_free(sbuffer_t **buffer) {
-
-	if((buffer == NULL) || (*buffer == NULL)) {
-		return SBUFFER_FAILURE;
-	}
-	pthread_mutex_lock(&(*buffer)->mutex);
-	(*buffer)->is_open = 0 ;
-	pthread_cond_broadcast(&(*buffer)->not_empty);
-	pthread_mutex_unlock(&(*buffer)->mutex);
-	sbuffer_node_t *dummy ;
-	while((*buffer )->head){
-		dummy = (*buffer)->head ;
-		(*buffer)->head = (*buffer )->head->next ;
-		free(dummy );
-	}
-	pthread_mutex_destroy(&(*buffer)->mutex);
-	pthread_cond_destroy(&(*buffer)->not_empty );
-	pthread_cond_destroy(&(*buffer)-> not_full);
-	free(*buffer) ;
-	*buffer = NULL;
-	return SBUFFER_SUCCESS;
-
-
-
+    if (*node == NULL) {
+        // No node selected, start from head.
+        *data = sbuffer->head->data;
+        *node = sbuffer->head;
+        return SBUFFER_SUCCESS;
+    } else if ((*node)->next != NULL) {
+        // Node selected, start from there.
+        *data = (*node)->next->data;
+        *node = (*node)->next;
+        return SBUFFER_SUCCESS;
+    } else {
+        // List has no data.
+        return SBUFFER_NO_DATA;
+    }
 }
 
-int sbuffer_remove(sbuffer_t *buffer, sensor_data_t *data) {
-	if(buffer == NULL ){
-		return SBUFFER_FAILURE;
-	}
-	pthread_mutex_lock(&buffer->mutex);
+int sbuffer_insert(sensor_data_t *data) {
+    ERROR_HANDLER(sbuffer == NULL, "Buffer is NULL.");
+    sbuffer_node_t *temp = malloc(sizeof(sbuffer_node_t));
 
+    ERROR_HANDLER(temp == NULL, "Buffer malloc failed.");
 
-	if(!buffer->is_open && buffer->head == NULL){
-		pthread_mutex_unlock(&buffer->mutex );
-		return SBUFFER_NO_DATA;
-	}
-	printf("trying 2 remove data\n");
-	while(buffer->head == NULL && buffer->is_open ){
-		pthread_cond_wait(&buffer->not_empty, &buffer->mutex );
-	}
-	if(buffer->head == NULL){
-		pthread_mutex_unlock(&buffer->mutex);
-		return SBUFFER_NO_DATA;
-	}
-	sbuffer_node_t *dummy = buffer->head;
-	*data = dummy->data ;
+    temp->data = data;
+    temp->next = NULL;
 
-	printf("removing data: id=%" PRIu16 ", value=%.2f, timestamp=%ld \n", data->id, data->value, (long)data->ts);
-	if(buffer->head == buffer->tail){
-		buffer->head = buffer->tail = NULL;
-	}
-	else{
-		buffer->head = buffer->head->next ;
-	}
+    pthread_mutex_lock(&write_lock_mtx); // Make sure only one thread writes concurrently.
 
-	free(dummy);
+    if (!sbuffer->tail) // buffer empty (buffer->head should also be NULL
+    {
+        sbuffer->head = sbuffer->tail = temp;
+    } else // buffer not empty
+    {
+        sbuffer->tail->next = temp;
+        sbuffer->tail = sbuffer->tail->next;
+    }
+    pthread_mutex_unlock(&write_lock_mtx);
 
-
-
-	pthread_mutex_unlock(&buffer->mutex);
-
-	printf("buffer after removal: head=%p, tail=%p \n", buffer->head, buffer->tail) ;
-
-	return SBUFFER_SUCCESS;
-
-
-
-
-}
-
-int sbuffer_insert(sbuffer_t *buffer, sensor_data_t *data) {
-	if(buffer == NULL ){
-		return SBUFFER_FAILURE;
-	}
-	pthread_mutex_lock( &buffer->mutex);
-	if(!buffer->is_open){
-		pthread_mutex_unlock(&buffer->mutex);
-		printf("buffer is closed, cldn't insert data \n");
-		return SBUFFER_FAILURE;
-	}
-	sbuffer_node_t *dummy = malloc(sizeof( sbuffer_node_t));
-	if(dummy == NULL){
-		pthread_mutex_unlock(&buffer->mutex);
-		printf("failed 2 allocate mem 4 new node \n");
-		return SBUFFER_FAILURE;
-	}
-	dummy->data = *data ;
-	dummy->next = NULL ;
-	if(buffer->tail == NULL ){
-		buffer->head = buffer->tail = dummy;
-	}
-	else{
-		buffer->tail->next = dummy;
-		buffer->tail = buffer->tail->next;
-	}
-	pthread_cond_signal(&buffer->not_empty );
-	pthread_mutex_unlock(&buffer->mutex);
-	return SBUFFER_SUCCESS;
-
-
-}
-
-int sbuffer_close(sbuffer_t *buffer){
-	if(buffer == NULL ){
-		return SBUFFER_FAILURE;
-	}
-	pthread_mutex_lock(&buffer->mutex);
-	buffer->is_open = 0;
-	pthread_cond_broadcast(&buffer->not_empty);
-	pthread_mutex_unlock(&buffer->mutex);
-	return SBUFFER_SUCCESS;
+    return SBUFFER_SUCCESS;
 }
