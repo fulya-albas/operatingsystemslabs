@@ -66,7 +66,6 @@ int write_to_log(int code, sensor_id_t id, sensor_value_t value) {
 }
 
 
-
 int create_log_process() {
     if (pipe(pipe_fd) == -1) {
         perror("pipe");

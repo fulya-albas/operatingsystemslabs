@@ -14,7 +14,7 @@
 #include "sensor_db.h"
 
 /**
-* The connection manager has 2 tasks:
+* The connection manager has the following tasks:
 * - listens for data from the tcp socket
 * - inserts incoming data into the shared buffer and logs the events
 */

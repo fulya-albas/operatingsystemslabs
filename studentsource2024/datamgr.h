@@ -14,26 +14,20 @@
 #endif
 
 //temporarily set  min and max temp
-//#define SET_MAX_TEMP 30
-//#define SET_MIN_TEMP 10
+#define SET_MIN_TEMP
+#define SET_MIN_TEMP 10
 
 #ifndef SET_MAX_TEMP
-#error SET_MAX_TEMP not set
+#define SET_MAX_TEMP 25
 #endif
 
-#ifndef SET_MIN_TEMP
-#error SET_MIN_TEMP not set
-#endif
 
-/*
- * Use ERROR_HANDLER() for handling memory allocation problems, invalid sensor IDs, non-existing files, etc.
- */
-#define ERROR_HANDLER(condition, ...)    do {                       \
-                      if (condition) {                              \
-                        printf("\nError: in %s - function %s at line %d: %s\n", __FILE__, __func__, __LINE__, __VA_ARGS__); \
-                        exit(EXIT_FAILURE);                         \
-                      }                                             \
-                    } while(0)
+//#ifndef SET_MIN_TEMP
+//#error SET_MIN_TEMP not set
+//#endif
+
+typedef struct element element_t;
+
 
 /**
  *  This method holds the core functionality of your datamgr. It takes in 2 file pointers to the sensor files and parses them.
@@ -63,7 +57,7 @@ uint16_t datamgr_get_room_id(sensor_id_t sensor_id);
  * \param sensor_id the sensor id to look for
  * \return the running AVG of the given sensor
  */
-sensor_value_t datamgr_get_avg(sensor_id_t sensor_id);
+static sensor_value_t datamgr_get_avg(sensor_value_t const queue[RUN_AVG_LENGTH]);
 
 /**
  * Returns the time of the last reading for a certain sensor ID
